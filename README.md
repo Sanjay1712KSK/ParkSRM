@@ -4,7 +4,7 @@ Intelligent campus parking for SRMIST Kattankulathur. One TypeScript application
 
 ## Current implementation
 
-Deployment verification retriggered on November 2, 2026.
+Deployment verification retriggered on November 2, 2026. TypeScript build fixes included.
 
 - Responsive dashboard, parking zones and availability
 - Student / faculty / researcher profile onboarding
