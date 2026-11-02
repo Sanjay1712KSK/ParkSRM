@@ -1,0 +1,26 @@
+import { useRef, useState } from 'react'
+import Papa from 'papaparse'
+import { CalendarDays, Download, FileUp, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useStore } from '../lib/store'
+import { DAYS, validateSessions } from '../lib/time'
+import type { TimetableSession } from '../lib/types'
+export default function Timetable(){
+ const {timetable,importTimetable}=useStore(),input=useRef<HTMLInputElement>(null)
+ const [day,setDay]=useState('Monday'),[notice,setNotice]=useState(''),[errors,setErrors]=useState<string[]>([])
+ const [draft,setDraft]=useState({start:'08:00',end:'09:00',course:'',location:''})
+ const sessions=timetable.filter(s=>s.day===day).sort((a,b)=>a.start.localeCompare(b.start))
+ function upload(file?:File){if(!file)return;Papa.parse<Record<string,string>>(file,{header:true,skipEmptyLines:true,complete:(result)=>{
+  const rows:TimetableSession[]=result.data.map((r,i)=>({id:`csv-${Date.now()}-${i}`,day:(r.day||'').trim(),start:(r.start||'').trim(),end:(r.end||'').trim(),course:(r.course||'').trim(),location:(r.location||'').trim()}))
+  const issues=validateSessions(rows);setErrors(issues)
+  if(!issues.length){importTimetable(rows);setNotice(`${rows.length} timetable sessions imported successfully.`)}else setNotice('Import needs attention. Correct the highlighted CSV rows and retry.')
+ },error:e=>setNotice(e.message)})}
+ function add(){const row={...draft,id:crypto.randomUUID(),day};const all=[...timetable,row];const issues=validateSessions([row]);if(issues.length){setErrors(issues);return}importTimetable(all);setDraft({...draft,course:'',location:''});setNotice('Class session added.')}
+ function remove(id:string){importTimetable(timetable.filter(s=>s.id!==id));setNotice('Class session removed.')}
+ function downloadTemplate(){const csv='day,start,end,course,location\nMonday,08:00,09:45,Neural Networks,TP-401\nMonday,12:00,13:45,Compiler Design,TP-203\n';const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='parksrm-timetable-template.csv';a.click();URL.revokeObjectURL(a.href)}
+ return <div className="page-stack"><div className="page-title"><div><div className="eyebrow">ACADEMIC SCHEDULE</div><h1>My timetable</h1><p>Import your own Academia timetable export. Your credentials are never requested.</p></div><button className="secondary-btn" onClick={downloadTemplate}><Download size={16}/> CSV template</button></div>
+ <div className="import-banner"><div className="import-icon"><FileUp/></div><div><b>Import a timetable export</b><p>Upload CSV with <code>day,start,end,course,location</code> columns. Review the imported sessions before using them for parking eligibility.</p></div><button className="primary-btn" onClick={()=>input.current?.click()}><FileUp size={16}/> Upload CSV</button><input ref={input} type="file" accept=".csv,text/csv" hidden onChange={e=>upload(e.target.files?.[0])}/></div>
+ {notice&&<div className="notice success">{notice}</div>}{errors.length>0&&<div className="notice error">{errors.map(e=><div key={e}>{e}</div>)}</div>}
+ <section className="panel"><div className="section-heading"><div><span className="eyebrow">WEEKLY VIEW</span><h3>Class schedule</h3></div><span className="auto-tag"><CalendarDays size={14}/>{timetable.length} sessions loaded</span></div><div className="day-tabs">{DAYS.map(d=><button key={d} className={day===d?'active':''} onClick={()=>setDay(d)}>{d.slice(0,3)}</button>)}</div><div className="class-list">{sessions.length?sessions.map(s=><div className="class-row" key={s.id}><div className="class-time"><b>{s.start}</b><span>{s.end}</span></div><div className="class-marker"/><div className="class-details"><b>{s.course}</b><span>{s.location||'Location not specified'}</span></div><button className="icon-btn delete-btn" aria-label="Remove class" onClick={()=>remove(s.id)}><Trash2 size={16}/></button></div>):<div className="empty-inline">No classes added for {day}. Import a CSV or add a session below.</div>}</div></section>
+ <section className="panel"><div className="section-heading"><div><span className="eyebrow">MANUAL EDITOR</span><h3>Add a class session</h3></div><Pencil size={18} className="muted"/></div><div className="form-grid four"><label className="field-label">Day<select value={day} onChange={e=>setDay(e.target.value)}>{DAYS.map(d=><option key={d}>{d}</option>)}</select></label><label className="field-label">Start<input type="time" value={draft.start} onChange={e=>setDraft({...draft,start:e.target.value})}/></label><label className="field-label">End<input type="time" value={draft.end} onChange={e=>setDraft({...draft,end:e.target.value})}/></label><label className="field-label">Course<input placeholder="Course name" value={draft.course} onChange={e=>setDraft({...draft,course:e.target.value})}/></label><label className="field-label">Room / location<input placeholder="Optional" value={draft.location} onChange={e=>setDraft({...draft,location:e.target.value})}/></label><button className="primary-btn add-session" onClick={add}><Plus size={16}/> Add session</button></div></section>
+ <div className="note-strip"><CalendarDays size={16}/> Parking windows cover your class block, merging intervening gaps up to 3 hours. Day orders, holidays and timetable changes must be verified before a real reservation.</div></div>
+}
