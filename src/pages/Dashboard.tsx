@@ -8,7 +8,6 @@ export default function Dashboard(){
  const total=zones.reduce((a,z)=>a+z.total,0), occupied=zones.reduce((a,z)=>a+z.occupied,0)
  const todayName=new Intl.DateTimeFormat('en-US',{weekday:'long'}).format(new Date())
  const windows=eligibleWindows(timetable,todayName)
- const active=reservations.find(r=>['active','checked-in'].includes(r.status))
  return <div className="page-stack">
   <section className="welcome-row"><div><div className="eyebrow">SRMIST · KTR CAMPUS</div><h1>Good morning, {profile?.name?.split(' ')[0]||'there'}<span className="wave">✳</span></h1><p>Your campus day, with parking already thought through.</p></div><Link to="/parking" className="primary-btn"><CarFront size={17}/> Find a parking spot</Link></section>
   <section className="hero-panel"><div className="hero-copy"><div className="hero-tag"><Sparkles size={14}/> SMART PARKING ASSISTANT</div><h2>Arrive. Park.<br/><em>Get on with your day.</em></h2><p>Parking windows are estimated from your timetable. Book a suitable space before you arrive.</p><Link to="/timetable" className="hero-link">Review my schedule <ChevronRight size={16}/></Link></div><div className="hero-visual"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="parking-pin"><CarFront size={34}/><span>AVAILABLE</span></div><div className="float-note"><span className="live-dot"/> Live zone snapshot <b>{total-occupied} spaces</b></div></div></section>
