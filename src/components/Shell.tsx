@@ -1,9 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { CalendarDays, CarFront, CircleHelp, LayoutDashboard, Menu, Settings, ShieldCheck, Wallet, X } from 'lucide-react'
+import { CalendarDays, CarFront, CircleHelp, LayoutDashboard, Leaf, Menu, Settings, ShieldCheck, Wallet, X } from 'lucide-react'
 import { useState } from 'react'
 import { useStore } from '../lib/store'
 
-const links=[{to:'/',label:'Overview',icon:LayoutDashboard},{to:'/parking',label:'Find parking',icon:CarFront},{to:'/timetable',label:'My timetable',icon:CalendarDays},{to:'/wallet',label:'Credit wallet',icon:Wallet},{to:'/admin',label:'Operations',icon:ShieldCheck}]
+const links=[{to:'/',label:'Overview',icon:LayoutDashboard},{to:'/parking',label:'Find parking',icon:CarFront},{to:'/timetable',label:'My timetable',icon:CalendarDays},{to:'/wallet',label:'Credit wallet',icon:Wallet},{to:'/sustainability',label:'Sustainability',icon:Leaf},{to:'/admin',label:'Operations',icon:ShieldCheck}]
 export default function Shell(){
  const [open,setOpen]=useState(false);const {profile,credits,isDemo}=useStore()
  return <div className="app-shell">
