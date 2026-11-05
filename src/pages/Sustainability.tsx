@@ -86,6 +86,6 @@ export default function Sustainability() {
       </div>
     </section>
 
-    <p className="sustain-footnote">Model basis: avoided distance × vehicle fuel consumption × 2.31 kg CO₂ per litre of petrol. Assumptions are editable; real results depend on traffic, vehicle mix, occupancy and driver behaviour. Credits are demonstration points, not money.</p>
+    <p className="sustain-footnote">Model basis: avoided distance × vehicle fuel consumption × 2.31 kg CO₂ per litre of petrol. SEAI lists 2.311 kg CO₂/L for 100% petroleum petrol and explicitly describes this as direct combustion CO₂, excluding upstream emissions. This reference factor is not automatically representative of local blended petrol; calibrate it for the campus fleet. <a href="https://www.seai.ie/data-and-insights/seai-statistics/conversion-factors" target="_blank" rel="noreferrer">SEAI conversion factors</a>. Assumptions are editable; real results depend on traffic, vehicle mix, occupancy and driver behaviour. Credits are demonstration points, not money.</p>
   </div>
 }
