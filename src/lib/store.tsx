@@ -31,6 +31,74 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { localStorage.setItem(KEY, JSON.stringify(state)) }, [state])
 
+  // Supabase is the system of record in configured mode. Hydrate the local UI
+  // cache once per authenticated profile; there is deliberately no polling.
+  useEffect(() => {
+    const userId = state.profile?.backendUserId
+    if (!isSupabaseConfigured || !supabase || !userId) return
+    let active = true
+    const hydrate = async () => {
+      const [walletResult, timetableResult, reservationsResult, ledgerResult] = await Promise.all([
+        supabase.from('wallets').select('available_credits').eq('user_id', userId).single(),
+        supabase.from('timetable_sessions').select('id,day_of_week,starts_at,ends_at,course,location').eq('user_id', userId),
+        supabase.from('reservations')
+          .select('id,slot_id,starts_at,ends_at,grace_ends_at,status,created_at,parking_slots(slot_code,zone_id)')
+          .eq('user_id', userId).order('created_at', { ascending: false }).limit(100),
+        supabase.from('credit_ledger')
+          .select('id,entry_type,available_delta,note,created_at,reservation_id')
+          .eq('user_id', userId).order('created_at', { ascending: false }).limit(100),
+      ])
+      if (!active || walletResult.error || timetableResult.error || reservationsResult.error || ledgerResult.error) return
+
+      const timetable: TimetableSession[] = (timetableResult.data || []).map(row => ({
+        id: row.id,
+        day: DAYS[(row.day_of_week || 1) - 1] || 'Monday',
+        start: String(row.starts_at).slice(0, 5),
+        end: String(row.ends_at).slice(0, 5),
+        course: row.course,
+        location: row.location || '',
+      }))
+      const reservations: Reservation[] = (reservationsResult.data || []).map(row => {
+        const slot = row.parking_slots as unknown as { slot_code: string; zone_id: string } | null
+        const zoneId = Object.entries(SUPABASE_ZONE_IDS).find(([, uuid]) => uuid === slot?.zone_id)?.[0] || 'north'
+        const startDate = new Date(row.starts_at)
+        const endDate = new Date(row.ends_at)
+        const date = startDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+        const start = startDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' })
+        const end = endDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' })
+        const rawStatus = row.status as string
+        const status: Reservation['status'] = rawStatus === 'checked_in' ? 'checked-in'
+          : rawStatus === 'completed' ? 'completed'
+          : rawStatus === 'late' ? 'late'
+          : rawStatus === 'cancelled' ? 'cancelled'
+          : rawStatus === 'expired' ? 'expired' : 'active'
+        return {
+          id: row.id, zoneId, slotLabel: `${zoneId} · ${slot?.slot_code || 'Physical slot'}`,
+          date, start, end, graceEnd: row.grace_ends_at,
+          status, createdAt: row.created_at, creditsHeld: 25,
+        }
+      })
+      const ledger: LedgerEntry[] = (ledgerResult.data || []).map(row => ({
+        id: row.id,
+        type: row.entry_type as LedgerEntry['type'],
+        amount: row.available_delta,
+        note: row.note,
+        createdAt: row.created_at,
+        reservationId: row.reservation_id || undefined,
+      }))
+      setState(current => ({
+        ...current,
+        credits: walletResult.data.available_credits,
+        timetable,
+        reservations,
+        ledger,
+      }))
+    }
+    void hydrate()
+    return () => { active = false }
+  }, [state.profile?.backendUserId])
+
+
   const api = useMemo<Store>(() => ({
     ...state,
     isDemo: !isSupabaseConfigured,
