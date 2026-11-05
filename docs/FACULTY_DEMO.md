@@ -51,5 +51,5 @@ Report both the functional result (successful booking / no duplicate slot) and s
 - Demo inventory is seeded and illustrative, not a surveyed SRM parking map.
 - The browser-only demo uses local storage and is not concurrency-safe.
 - Supabase mode requires a project, migrations, seed inventory, OTP email configuration and GitHub Actions secrets.
-- The 2.31 kg CO₂/L petrol factor is a generic reference; the SEAI lists 2.311 kg CO₂ per litre for 100% petroleum gasoline. The factor is direct combustion CO₂ and not a lifecycle estimate. See https://www.seai.ie/data-and-insights/seai-statistics/conversion-factors
+- The 2.31 kg CO₂/L petrol factor is a generic reference; SEAI lists 2.311 kg CO₂ per litre for 100% petroleum petrol and specifies that the factor covers direct combustion CO₂, not upstream emissions or lifecycle impact. It is not automatically representative of Indian blended petrol, so calibrate the factor for the campus fleet. Source: https://www.seai.ie/data-and-insights/seai-statistics/conversion-factors
 - Real-world deployment needs SRM approval, privacy review, authoritative identity/role validation, a QR/gate/sensor check-in/out source and a formally approved credit policy.
