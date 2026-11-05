@@ -4,6 +4,16 @@ create extension if not exists btree_gist;
 
 -- A profile is created only after Supabase Auth has verified the institutional email.
 drop policy if exists "profile owner can insert own profile" on public.profiles;
+drop policy if exists "profile owner can update own profile" on public.profiles;
+create policy "profile owner can update own profile"
+  on public.profiles for update to authenticated
+  using (auth.uid() = id)
+  with check (
+    auth.uid() = id
+    and lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+    and lower(email) like '%@srmist.edu.in'
+  );
+
 create policy "profile owner can insert own profile"
   on public.profiles for insert to authenticated
   with check (
@@ -424,7 +434,7 @@ begin
 
     update public.reservations
     set status = case when v_checked_in then 'late'::public.reservation_status else 'expired'::public.reservation_status end,
-        checked_out_at = now()
+        checked_out_at = null
     where id = v_res.id;
 
     insert into public.credit_ledger(
