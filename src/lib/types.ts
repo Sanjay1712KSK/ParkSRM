@@ -4,7 +4,7 @@ export type Profile = {
   name: string; email: string; role: UserRole; department: string
   batch?: string; registrationId?: string; designation?: string; researchCentre?: string
   vehicleNumber: string; vehicleType: 'two-wheeler' | 'four-wheeler'
-  backendUserId?: string; backendVehicleId?: string
+  backendUserId?: string; backendVehicleId?: string; backendAvailableCredits?: number
 }
 export type ParkingZone = { id: string; name: string; area: string; total: number; occupied: number; vehicleTypes: string[] }
 export type Reservation = {
