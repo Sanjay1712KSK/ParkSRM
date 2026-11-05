@@ -1,107 +1,145 @@
 # ParkSRM
 
-Intelligent campus parking for SRMIST Kattankulathur. One TypeScript application targets web, Android and iOS using Vite + React + Capacitor.
+ParkSRM is a sustainable campus-parking prototype for SRMIST Kattankulathur. The web app uses Vite, React, TypeScript and Capacitor. It supports a browser-only showcase mode and an optional authenticated Supabase backend.
 
-## Current implementation
+> **Prototype boundary:** this is not an SRM-authorised parking service. Seeded zones and demo occupancy are illustrative. Do not enforce real penalties or use the prototype credits as money. A physical deployment requires approval, a surveyed slot inventory, privacy/security review and on-site operating procedures.
 
-Deployment verification retriggered on November 2, 2026. TypeScript build fixes included.
+## What works in the browser demo
 
-- Responsive dashboard, parking zones and availability
-- Student / faculty / researcher profile onboarding
-- Strict `@srmist.edu.in` email validation in the client (production verification must also happen server-side)
-- Timetable CSV import, sample timetable and manual session editing
-- Schedule-aware parking windows with a configurable 10-minute grace period
-- 25-credit reservation hold / release / forfeiture demo ledger
-- Admin-oriented parking overview and configurable zones
-- Demo mode using browser local storage
-- Supabase SQL foundation with RLS, wallet ledger and reservation constraints
-- GitHub Pages deployment workflow
+- Student / faculty / researcher onboarding with a sample student profile.
+- Weekly timetable editor, CSV import and sample timetable.
+- Timetable-linked booking windows; classes separated by up to three hours are grouped into one parking window.
+- Zone selection, demo reservations, arrival/check-in, on-time checkout, simulated late checkout and cancellation.
+- A 100-point demo wallet with 25-point hold, release and forfeiture ledger events.
+- Operations overview, reservation audit and local demo reset.
+- Sustainability page with editable assumptions for avoided distance, fuel and tailpipe CO₂.
+- Responsive, route-split UI that uses system fonts and does not poll continuously or load map tiles.
 
-> Demo mode is for development and demonstration only. It is not an authoritative parking or payment system. Production booking, credit movements, eligibility and expiry must be enforced in trusted backend code and database transactions.
+Demo data is saved in the current browser's local storage. It is useful for presenting the user flow, but it is **not concurrency-safe** and is not a shared parking inventory.
 
 ## Run locally
 
 Requirements: Node.js 20+ and npm.
 
-```bash
-npm install
-cp .env.example .env.local
-npm run dev
-```
+    npm install
+    cp .env.example .env.local
+    npm run dev
 
-Open the URL printed by Vite. Without Supabase variables the app uses demo mode.
+Leave the Supabase variables empty to use demo mode. A sample student profile can be filled in from the setup page. The dummy email in that profile is only for the local demo and cannot receive OTP mail.
 
 ## Supabase setup
 
-1. Create a Supabase project.
-2. Apply `supabase/migrations/0001_initial_schema.sql` in the SQL editor or with the Supabase CLI.
-3. Configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-4. Enable email OTP / magic-link authentication.
-5. Configure allowed redirect URLs for local development and the deployed GitHub Pages URL.
-6. Review and deploy the server-side functions in `supabase/functions/` before allowing real reservations.
+The repository includes a transactional SQL backend. Create a Supabase project under your account, then run the following files in order in the Supabase SQL Editor:
 
-The initial schema intentionally does not grant users direct write access to wallet balances or reservation state. Implement booking and checkout through authenticated Edge Functions / database RPCs with row locks and idempotency keys.
+1. supabase/migrations/0001_initial_schema.sql
+2. supabase/migrations/0002_transactional_booking.sql
+3. supabase/migrations/0003_timetable_sync.sql
+4. supabase/migrations/0004_zone_availability.sql
+5. supabase/seed.sql (illustrative inventory only)
 
-## GitHub Pages
+The migrations create profile, vehicle, timetable, zone, physical slot, reservation, wallet, credit-ledger and audit tables; apply RLS; and add database functions for the booking flow.
 
-The repository must be named `ParkSRM` for the current Vite base path.
+### Configure email verification
 
-1. Create a new public GitHub repository named `ParkSRM`.
-2. Push this project to its default branch (`main`).
-3. In GitHub: Settings → Pages → Build and deployment → Source: GitHub Actions.
-4. Add repository secrets `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` when Supabase is configured.
-5. The included `.github/workflows/deploy.yml` builds and deploys the web app on every push to `main`.
+In Supabase Authentication, enable Email. The onboarding screen sends a one-time code and verifies it with verifyOtp. For a six-digit code, edit the Magic Link / OTP email template so it contains the variable {{ .Token }} and does not use {{ .ConfirmationURL }}. Supabase documents that {{ .Token }} sends a code, while {{ .ConfirmationURL }} sends a magic link:
 
-The deployed URL will be `https://<github-username>.github.io/ParkSRM/`.
+- https://supabase.com/docs/guides/auth/auth-email-templates
+- https://supabase.com/docs/guides/auth/auth-email-passwordless
 
-## Android / iOS
+The app checks the @srmist.edu.in domain for usability and Supabase Auth proves control of the email address. This alone does not establish student/faculty status; institutional eligibility must be approved and verified separately before production.
 
-Capacitor requires platform tooling:
+### Connect the deployed app
 
-```bash
-npm run build
-npx cap add android
-npx cap add ios
-npx cap sync
-npm run android
-npm run ios
-```
+Set these environment variables in your local .env.local:
 
-Android builds require Android Studio / Android SDK. iOS builds require macOS and Xcode. The native projects are generated locally and should be committed after setup. For production, configure deep links, secure auth redirects, push notifications and app-store signing.
+    VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+    VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_PUBLISHABLE_OR_LEGACY_ANON_KEY
 
-## Timetable CSV format
+Then add the same names as GitHub repository Actions secrets:
 
-Required columns: `day,start,end,course,location`
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY
 
-Example:
+Push to main; the GitHub Actions workflow injects those build-time values and deploys to:
 
-```csv
-day,start,end,course,location
-Monday,08:00,09:45,Neural Networks,TP-401
-Monday,12:00,13:45,Compiler Design,TP-203
-Tuesday,10:00,11:40,Database Systems,TP-101
-```
+https://sanjay1712ksk.github.io/ParkSRM/
 
-Times use 24-hour local campus time. The importer validates ranges and rejects malformed rows. PDF parsing is not included in this initial slice; users can convert a timetable PDF to CSV or enter sessions manually. A future parser should show a review screen before accepting extracted data.
+Only the public publishable/anon key belongs in the frontend. **Never** place a Supabase service-role key in Vite variables, GitHub Pages artifacts or client code.
 
-## Architecture and safety decisions
+### Transactional booking flow
 
-- Client email-domain checks are only UX validation. Email ownership is established by Supabase Auth; production enrollment must additionally verify institutional eligibility.
-- Academia credentials are never requested or stored. Only user-exported timetable files are imported.
-- Schedule-derived windows are estimates of availability, not proof of physical attendance.
-- A parking reservation, physical entry and physical exit are separate events.
-- Wallet ledger entries are append-only. Credits are held on reservation and released on valid checkout; late checkout forfeits the hold.
-- Penalty policy and credit amounts must be approved by SRM before any real-world use.
-- A production deployment requires campus authorization, privacy review, retention rules and security testing.
+When Supabase variables are configured:
+
+1. A member verifies their SRM email with an email OTP and registers a vehicle.
+2. The timetable editor sends the complete timetable to the replace_user_timetable RPC.
+3. The availability RPC returns the number of compatible physical slots free for the selected date/time and vehicle type.
+4. The create_parking_reservation RPC checks the timetable window, locks the wallet row, selects and locks a compatible physical slot, inserts the reservation, moves 25 credits from available to held, and writes the ledger/audit entries in one database transaction.
+5. Idempotency keys prevent a retry from charging the same request twice. A Postgres exclusion constraint prevents overlapping reservations for the same physical slot.
+6. Check-in, checkout and cancellation are database RPCs. Checkout releases the 25-point hold when within the 10-minute grace period; after the deadline, the hold is forfeited and a penalty record is created.
+7. The expiry function handles abandoned reservations: un-arrived no-shows have the hold released; checked-in bookings left beyond grace are forfeited.
+
+All reservation and credit mutations are performed in SQL SECURITY DEFINER functions with a fixed search path and execute permissions restricted to authenticated users (the expiry task is service-role only). Do not add client-side write policies for wallets, ledger entries or reservation state.
+
+### Schedule expiry job
+
+Enable the pg_cron extension in the Supabase dashboard, then schedule the expiry function as a database job. For example, in the SQL Editor (after verifying the extension schema in your project):
+
+~~~sql
+select cron.schedule(
+  'parksrm-overdue-bookings',
+  '* * * * *',
+  $$select public.expire_overdue_parking_reservations();$$
+);
+~~~
+
+The function processes a bounded batch and is safe to retry. Confirm the job owner/permissions and test with dummy users before enabling it on any real deployment.
+
+### Important backend assumptions
+
+- supabase/seed.sql creates 365 illustrative slot records, not an authoritative campus map. Replace them with a surveyed inventory before any live use.
+- Time calculations are in Asia/Kolkata.
+- Timetable-derived eligibility is a scheduling proxy; it does not prove class attendance.
+- Check-in is currently an authenticated time-window action. A real deployment should bind check-in/out to a campus QR scanner, gate controller or validated sensor event.
+- Admin role assignment, penalty appeals, notification delivery, sensor ingestion and an authorised credit policy are not implemented yet.
+- The current browser cache stores profile and session state for convenience. Apply a privacy/retention policy before production use.
+
+## Sustainable computing rationale
+
+ParkSRM targets two different sources of impact:
+
+**Physical mobility:** a timetable-aware reservation gives a driver a known zone before entering the campus. If this reduces repeated passes and idling while searching for a space, it can avoid fuel consumption. The impact estimator uses:
+
+    avoided km = baseline search km − optimised search km
+    fuel avoided (L) = avoided km ÷ vehicle efficiency (km/L)
+    direct CO₂ avoided (kg) = fuel avoided × petrol factor (kg/L)
+
+The default petrol factor is an approximate 2.31 kg CO₂/L reference. It represents direct combustion CO₂, not full lifecycle emissions. The factor and vehicle efficiency must be calibrated to the actual campus fleet. The calculator is a scenario model, not measured savings.
+
+**Digital service:** pages are lazy-loaded, the interface uses local system fonts rather than downloading web fonts, no map tile engine or autoplay media is included, and the app does not run a polling loop. Supabase transactions are called when the user takes an action. This reduces avoidable downloads and repeated requests, but actual energy use still needs measurement.
+
+For a faculty evaluation, see docs/FACULTY_DEMO.md.
+
+## Mobile builds
+
+Capacitor configuration is included. Native projects have not been generated or signed in this repository yet.
+
+    npm run build
+    npx cap add android
+    npx cap sync android
+    npx cap open android
+
+Android requires Android Studio / Android SDK. iOS requires macOS and Xcode:
+
+    npx cap add ios
+    npx cap sync ios
+    npx cap open ios
 
 ## Quality checks
 
-```bash
-npm run typecheck
-npm run test
-npm run build
-```
+    npm run typecheck
+    npm test
+    npm run build
 
 ## License
 
-Project source is provided for educational prototyping. Add an institution-approved license before public production distribution.
+Educational prototype. Add an institution-approved license before public production distribution.
