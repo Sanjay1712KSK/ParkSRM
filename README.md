@@ -113,7 +113,7 @@ ParkSRM targets two different sources of impact:
     fuel avoided (L) = avoided km ÷ vehicle efficiency (km/L)
     direct CO₂ avoided (kg) = fuel avoided × petrol factor (kg/L)
 
-The default petrol factor is an approximate 2.31 kg CO₂/L reference. It represents direct combustion CO₂, not full lifecycle emissions. The factor and vehicle efficiency must be calibrated to the actual campus fleet. The calculator is a scenario model, not measured savings.
+The default petrol factor is an approximate 2.31 kg CO₂/L reference; SEAI lists 2.311 kg CO₂/L for 100% petroleum petrol and states that it covers direct combustion CO₂, not upstream emissions. This may not match local blended petrol, so calibrate the factor and vehicle efficiency to the actual campus fleet. Source: https://www.seai.ie/data-and-insights/seai-statistics/conversion-factors. The calculator is a scenario model, not measured savings.
 
 **Digital service:** pages are lazy-loaded, the interface uses local system fonts rather than downloading web fonts, no map tile engine or autoplay media is included, and the app does not run a polling loop. Supabase transactions are called when the user takes an action. This reduces avoidable downloads and repeated requests, but actual energy use still needs measurement.
 
