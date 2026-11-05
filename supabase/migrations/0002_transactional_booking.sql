@@ -404,34 +404,49 @@ set search_path = public, pg_temp
 as $$
 declare
   v_res record;
+  v_checked_in boolean;
   v_count integer := 0;
 begin
   for v_res in
     select * from public.reservations
-    where status = 'checked_in' and grace_ends_at < now()
+    where status in ('held','confirmed','checked_in') and grace_ends_at < now()
     order by grace_ends_at
     limit 200
     for update skip locked
   loop
+    v_checked_in := v_res.status = 'checked_in';
+
     update public.wallets
-    set held_credits = greatest(0, held_credits - 25), updated_at = now()
+    set available_credits = available_credits + case when v_checked_in then 0 else 25 end,
+        held_credits = greatest(0, held_credits - 25),
+        updated_at = now()
     where user_id = v_res.user_id;
 
-    update public.reservations set status = 'late', checked_out_at = now()
+    update public.reservations
+    set status = case when v_checked_in then 'late'::public.reservation_status else 'expired'::public.reservation_status end,
+        checked_out_at = now()
     where id = v_res.id;
 
     insert into public.credit_ledger(
       user_id, reservation_id, entry_type, available_delta, held_delta, note, idempotency_key
     )
     values (
-      v_res.user_id, v_res.id, 'forfeit', 0, -25,
-      'Reservation expired after grace period without checkout', 'expire:' || v_res.id::text
+      v_res.user_id, v_res.id,
+      case when v_checked_in then 'forfeit'::public.ledger_type else 'release'::public.ledger_type end,
+      case when v_checked_in then 0 else 25 end, -25,
+      case when v_checked_in
+        then 'Reservation expired after grace period without checkout'
+        else 'No-show reservation expired; held credits released'
+      end,
+      'expire:' || v_res.id::text
     )
     on conflict (idempotency_key) do nothing;
 
-    insert into public.penalties(reservation_id, user_id, penalty_credits, reason)
-    values (v_res.id, v_res.user_id, 25, 'No checkout recorded before grace deadline')
-    on conflict (reservation_id) do nothing;
+    if v_checked_in then
+      insert into public.penalties(reservation_id, user_id, penalty_credits, reason)
+      values (v_res.id, v_res.user_id, 25, 'No checkout recorded before grace deadline')
+      on conflict (reservation_id) do nothing;
+    end if;
 
     v_count := v_count + 1;
   end loop;
