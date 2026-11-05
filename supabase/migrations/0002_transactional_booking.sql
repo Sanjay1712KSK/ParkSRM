@@ -185,8 +185,8 @@ begin
         and tstzrange(r.starts_at, r.ends_at, '[)') && tstzrange(p_starts_at, p_ends_at, '[)')
     )
   order by s.slot_code
-  for update of s skip locked
-  limit 1;
+  limit 1
+  for update of s skip locked;
 
   if v_slot_id is null then
     raise exception 'No compatible physical slot is available for this window';
@@ -410,8 +410,8 @@ begin
     select * from public.reservations
     where status = 'checked_in' and grace_ends_at < now()
     order by grace_ends_at
-    for update skip locked
     limit 200
+    for update skip locked
   loop
     update public.wallets
     set held_credits = greatest(0, held_credits - 25), updated_at = now()
