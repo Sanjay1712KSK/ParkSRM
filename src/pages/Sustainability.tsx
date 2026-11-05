@@ -1,11 +1,11 @@
 import './Sustainability.css'
 import { useMemo, useState } from 'react'
+import { estimateMobilityImpact, PETROL_CO2_KG_PER_LITRE } from '../lib/sustainability'
 import { Activity, ArrowDownRight, BatteryCharging, CarFront, Cloud, Gauge, Leaf, Route, Zap } from 'lucide-react'
 
 const DEFAULT_TRIP_KM = 1.2
 const DEFAULT_OPTIMIZED_KM = 0.3
 const DEFAULT_KM_PER_LITRE = 12
-const DEFAULT_KG_CO2_PER_LITRE = 2.31
 
 export default function Sustainability() {
   const [baselineKm, setBaselineKm] = useState(DEFAULT_TRIP_KM)
@@ -14,16 +14,12 @@ export default function Sustainability() {
   const [bookings, setBookings] = useState(100)
 
   const estimate = useMemo(() => {
-    const avoidedKm = Math.max(0, baselineKm - optimizedKm)
-    const litres = avoidedKm / Math.max(1, efficiency)
-    const co2Kg = litres * DEFAULT_KG_CO2_PER_LITRE
-    return {
-      avoidedKm,
-      litres,
-      co2Kg,
-      fleetKm: avoidedKm * bookings,
-      fleetCo2: co2Kg * bookings,
-    }
+    return estimateMobilityImpact({
+      baselineSearchKm: baselineKm,
+      optimizedSearchKm: optimizedKm,
+      vehicleEfficiencyKmPerLitre: efficiency,
+      bookings,
+    })
   }, [baselineKm, optimizedKm, efficiency, bookings])
 
   return <div className="page-stack sustainability-page">
@@ -63,8 +59,8 @@ export default function Sustainability() {
         <span className="eyebrow">ESTIMATED SCENARIO OUTCOME</span>
         <div className="big-impact"><span>Potential CO₂ reduction</span><strong>{estimate.fleetCo2.toFixed(1)} <small>kg</small></strong></div>
         <div className="result-line"><span>Vehicle distance avoided</span><b>{estimate.fleetKm.toFixed(1)} km</b></div>
-        <div className="result-line"><span>Fuel avoided</span><b>{(estimate.litres*bookings).toFixed(2)} L</b></div>
-        <div className="result-line"><span>Tailpipe factor</span><b>{DEFAULT_KG_CO2_PER_LITRE.toFixed(2)} kg/L</b></div>
+        <div className="result-line"><span>Fuel avoided</span><b>{estimate.fleetLitres.toFixed(2)} L</b></div>
+        <div className="result-line"><span>Tailpipe factor</span><b>{PETROL_CO2_KG_PER_LITRE.toFixed(2)} kg/L</b></div>
         <div className="notice warning"><Zap size={16}/> This is a modelled scenario, not measured savings. Replace assumptions with campus traffic counts and fleet-specific fuel data for a study.</div>
       </div>
     </section>
