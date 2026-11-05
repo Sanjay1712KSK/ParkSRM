@@ -18,7 +18,7 @@ function AppRoutes() {
   return <Suspense fallback={<div className="page-loading">Loading workspace…</div>}>
     <Routes>
       <Route path="/setup" element={<Onboarding/>}/>
-      <Route element={<Shell/>}>
+      <Route element={setupRequired ? <Navigate to="/setup" replace/> : <Shell/>}>
         <Route index element={!setupRequired ? <Dashboard/> : <Navigate to="/setup"/>}/>
         <Route path="/parking" element={<Parking/>}/>
         <Route path="/timetable" element={<Timetable/>}/>
