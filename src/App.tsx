@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import Shell from './components/Shell'
 import { StoreProvider, useStore } from './lib/store'
+import { isSupabaseConfigured } from './lib/supabase'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Parking = lazy(() => import('./pages/Parking'))
@@ -12,12 +13,13 @@ const Onboarding = lazy(() => import('./pages/Onboarding'))
 const Sustainability = lazy(() => import('./pages/Sustainability'))
 
 function AppRoutes() {
-  const { onboardingComplete } = useStore()
+  const { onboardingComplete, profile } = useStore()
+  const setupRequired = !onboardingComplete || (isSupabaseConfigured && !profile?.backendUserId)
   return <Suspense fallback={<div className="page-loading">Loading workspace…</div>}>
     <Routes>
       <Route path="/setup" element={<Onboarding/>}/>
       <Route element={<Shell/>}>
-        <Route index element={onboardingComplete ? <Dashboard/> : <Navigate to="/setup"/>}/>
+        <Route index element={!setupRequired ? <Dashboard/> : <Navigate to="/setup"/>}/>
         <Route path="/parking" element={<Parking/>}/>
         <Route path="/timetable" element={<Timetable/>}/>
         <Route path="/wallet" element={<Wallet/>}/>
