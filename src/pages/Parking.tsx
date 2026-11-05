@@ -9,7 +9,7 @@ export default function Parking(){
  const [selected,setSelected]=useState('north'),[date,setDate]=useState(demoDate),[windowIndex,setWindowIndex]=useState(0),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[liveAvailability,setLiveAvailability]=useState<Record<string,{total:number;available:number}>|null>(null),[loadingInventory,setLoadingInventory]=useState(false),[inventoryError,setInventoryError]=useState(''),[refreshInventory,setRefreshInventory]=useState(0)
  const dayName=new Date(`${date}T12:00:00`).toLocaleDateString('en-US',{weekday:'long'})
  const windows=useMemo(()=>eligibleWindows(timetable,dayName),[timetable,dayName])
- const displayZones=zones.map(z=>{const live=liveAvailability?.[z.id];return live?{...z,total:live.total,occupied:live.total-live.available}:z})
+ const displayZones=zones.map(z=>{const live=liveAvailability?.[z.id];if(live)return {...z,total:live.total,occupied:live.total-live.available};return isDemo?z:{...z,total:0,occupied:0}})
  const zone=displayZones.find(z=>z.id===selected)!
  const compatible=profile?zone.vehicleTypes.includes(profile.vehicleType):true
  const inventoryReady=isDemo||Boolean(liveAvailability)
