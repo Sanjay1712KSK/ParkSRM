@@ -79,6 +79,10 @@ export default function Onboarding() {
       }, { onConflict: 'id' })
       if (profileError) throw profileError
 
+      const { data: wallet, error: walletError } = await supabase.from('wallets')
+        .select('available_credits').eq('user_id', userId).single()
+      if (walletError) throw walletError
+
       const { data: vehicle, error: vehicleError } = await supabase.from('vehicles').upsert({
         user_id: userId,
         registration_number: form.vehicleNumber.trim().toUpperCase(),
@@ -93,6 +97,7 @@ export default function Onboarding() {
         vehicleNumber: form.vehicleNumber.trim().toUpperCase(),
         backendUserId: userId,
         backendVehicleId: vehicle.id,
+        backendAvailableCredits: wallet.available_credits,
       })
       navigate('/')
     } catch (cause) {
