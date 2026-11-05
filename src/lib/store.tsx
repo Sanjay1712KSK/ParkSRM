@@ -39,7 +39,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...current,
       profile,
       onboardingComplete: true,
-      credits: profile.backendUserId ? current.credits : 100,
+      credits: profile.backendAvailableCredits ?? (profile.backendUserId ? current.credits : 100),
+      ...(profile.backendUserId ? { timetable: [], reservations: [], ledger: [] } : {}),
     })),
 
     importTimetable: async (timetable) => {
