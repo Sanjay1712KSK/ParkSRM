@@ -7,7 +7,7 @@ const KEY = 'parksrm-demo-state-v1'
 type Store = AppState & {
   isDemo: boolean; saveProfile:(p:Profile)=>void; importTimetable:(s:TimetableSession[])=>void
   reserve:(zoneId:string,date:string,start:string,end:string)=>{ok:boolean;message:string}
-  checkout:(id:string,late?:boolean)=>void; cancel:(id:string)=>void; reset:()=>void
+  checkin:(id:string)=>void; checkout:(id:string,late?:boolean)=>void; cancel:(id:string)=>void; reset:()=>void
 }
 const Context = createContext<Store | null>(null)
 const uid = () => crypto.randomUUID()
@@ -33,13 +33,17 @@ export function StoreProvider({children}:{children:ReactNode}) {
       setState({...state,credits:state.credits-25,reservations:[reservation,...state.reservations],ledger:[entry,...state.ledger]})
       return {ok:true,message:'Reservation confirmed — 25 credits held'}
     },
+    checkin:(id)=>{
+      const r=state.reservations.find(x=>x.id===id); if(!r || r.status!=='active') return
+      setState({...state,reservations:state.reservations.map(x=>x.id===id?{...x,status:'checked-in'}:x)})
+    },
     checkout:(id,late=false)=>{
-      const r=state.reservations.find(x=>x.id===id); if(!r || !['active','checked-in'].includes(r.status)) return
+      const r=state.reservations.find(x=>x.id===id); if(!r || r.status!=='checked-in') return
       const entry:LedgerEntry={id:uid(),type:late?'forfeit':'release',amount:late?0:25,note:late?'Reservation hold forfeited after grace period':'Reservation hold released after on-time checkout',createdAt:new Date().toISOString(),reservationId:id}
       setState({...state,credits:late?state.credits:state.credits+25,reservations:state.reservations.map(x=>x.id===id?{...x,status:late?'late':'completed'}:x),ledger:[entry,...state.ledger]})
     },
     cancel:(id)=>{
-      const r=state.reservations.find(x=>x.id===id); if(!r || !['active','checked-in'].includes(r.status)) return
+      const r=state.reservations.find(x=>x.id===id); if(!r || r.status!=='active') return
       const entry:LedgerEntry={id:uid(),type:'release',amount:25,note:'Reservation cancelled; hold released',createdAt:new Date().toISOString(),reservationId:id}
       setState({...state,credits:state.credits+25,reservations:state.reservations.map(x=>x.id===id?{...x,status:'cancelled'}:x),ledger:[entry,...state.ledger]})
     },
