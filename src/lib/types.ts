@@ -9,10 +9,10 @@ export type Profile = {
 export type ParkingZone = { id: string; name: string; area: string; total: number; occupied: number; vehicleTypes: string[] }
 export type Reservation = {
   id: string; zoneId: string; slotLabel: string; date: string; start: string; end: string
-  graceEnd: string; status: 'active' | 'checked-in' | 'completed' | 'late' | 'cancelled'
+  graceEnd: string; status: 'active' | 'checked-in' | 'completed' | 'late' | 'cancelled' | 'expired'
   createdAt: string; creditsHeld: number
 }
-export type LedgerEntry = { id: string; type: 'hold' | 'release' | 'forfeit' | 'adjustment'; amount: number; note: string; createdAt: string; reservationId?: string }
+export type LedgerEntry = { id: string; type: 'initial_credit' | 'hold' | 'release' | 'forfeit' | 'adjustment'; amount: number; note: string; createdAt: string; reservationId?: string }
 export type AppState = {
   profile: Profile | null; zones: ParkingZone[]; timetable: TimetableSession[]
   reservations: Reservation[]; ledger: LedgerEntry[]; credits: number; onboardingComplete: boolean
