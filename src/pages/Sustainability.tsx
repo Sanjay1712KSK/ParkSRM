@@ -1,3 +1,4 @@
+import './Sustainability.css'
 import { useMemo, useState } from 'react'
 import { Activity, ArrowDownRight, BatteryCharging, CarFront, Cloud, Gauge, Leaf, Route, Zap } from 'lucide-react'
 
