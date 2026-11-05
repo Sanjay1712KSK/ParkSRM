@@ -1,17 +1,44 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, Clock3, MapPin, ShieldCheck, SlidersHorizontal } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { eligibleWindows } from '../lib/time'
 import { demoDate } from '../lib/demo'
+import { campusTimestamp, supabase, SUPABASE_ZONE_IDS } from '../lib/supabase'
 export default function Parking(){
  const {zones,profile,timetable,reserve,reservations,checkin,checkout,cancel,isDemo}=useStore()
- const [selected,setSelected]=useState('north'),[date,setDate]=useState(demoDate),[windowIndex,setWindowIndex]=useState(0),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false)
+ const [selected,setSelected]=useState('north'),[date,setDate]=useState(demoDate),[windowIndex,setWindowIndex]=useState(0),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[liveAvailability,setLiveAvailability]=useState<Record<string,{total:number;available:number}>|null>(null),[loadingInventory,setLoadingInventory]=useState(false),[inventoryError,setInventoryError]=useState(''),[refreshInventory,setRefreshInventory]=useState(0)
  const dayName=new Date(`${date}T12:00:00`).toLocaleDateString('en-US',{weekday:'long'})
  const windows=useMemo(()=>eligibleWindows(timetable,dayName),[timetable,dayName])
- const zone=zones.find(z=>z.id===selected)!
+ const displayZones=zones.map(z=>{const live=liveAvailability?.[z.id];return live?{...z,total:live.total,occupied:live.total-live.available}:z})
+ const zone=displayZones.find(z=>z.id===selected)!
  const compatible=profile?zone.vehicleTypes.includes(profile.vehicleType):true
+ const inventoryReady=isDemo||Boolean(liveAvailability)
+ useEffect(()=>{
+  if(isDemo||!supabase||!profile||!windows[windowIndex]){setLiveAvailability(null);setLoadingInventory(false);return}
+  let cancelled=false
+  const selectedWindow=windows[windowIndex]
+  setLoadingInventory(true);setInventoryError('')
+  supabase.rpc('get_zone_availability',{
+   p_starts_at:campusTimestamp(date,selectedWindow.start),
+   p_ends_at:campusTimestamp(date,selectedWindow.end),
+   p_vehicle_type:profile.vehicleType,
+  }).then(({data,error})=>{
+   if(cancelled)return
+   if(error){setInventoryError(error.message);setLiveAvailability(null)}
+   else{
+    const mapped:Record<string,{total:number;available:number}>={}
+    ;(data as Array<{zone_id:string;total_slots:number;available_slots:number}>).forEach(row=>{
+     const match=Object.entries(SUPABASE_ZONE_IDS).find(([,uuid])=>uuid===row.zone_id)
+     if(match)mapped[match[0]]={total:row.total_slots,available:row.available_slots}
+    })
+    setLiveAvailability(mapped)
+   }
+   setLoadingInventory(false)
+  })
+  return ()=>{cancelled=true}
+ },[date,windows,windowIndex,profile?.vehicleType,isDemo,refreshInventory])
  const active=reservations.filter(r=>['active','checked-in'].includes(r.status))
- async function book(){if(!windows[windowIndex]||busy)return;const w=windows[windowIndex];setBusy(true);const result=await reserve(selected,date,w.start,w.end);setNotice(result.message);setBusy(false)}
+ async function book(){if(!windows[windowIndex]||busy)return;const w=windows[windowIndex];setBusy(true);const result=await reserve(selected,date,w.start,w.end);setNotice(result.message);if(result.ok&&!isDemo)setRefreshInventory(x=>x+1);setBusy(false)}
  return <div className="page-stack"><div className="page-title"><div><div className="eyebrow">PARKING DISCOVERY</div><h1>Find your space</h1><p>Choose a campus zone and a timetable-compatible window.</p></div><div className="availability-badge"><span className="live-dot"/> Availability snapshot</div></div>
  <div className="booking-layout"><div className="booking-main"><div className="panel"><div className="section-heading"><div><span className="eyebrow">01 / LOCATION</span><h3>Select a parking zone</h3></div><SlidersHorizontal size={18} className="muted"/></div><div className="zone-cards">{zones.map(z=>{const free=z.total-z.occupied;const pct=free/z.total*100;return <button key={z.id} className={`zone-card ${selected===z.id?'selected':''}`} onClick={()=>{setSelected(z.id);setNotice('')}}><div className="zone-card-top"><div className="zone-icon"><MapPin/></div><span className={pct<15?'capacity-low':'capacity-good'}>{pct<15?'Filling fast':'Available'}</span></div><b>{z.name}</b><small>{z.area}</small><div className="zone-card-bottom"><strong>{free}<small> / {z.total} spaces</small></strong><div className="mini-bar"><i style={{width:`${pct}%`}}/></div></div></button>})}</div></div>
  <div className="panel"><div className="section-heading"><div><span className="eyebrow">02 / TIME</span><h3>Choose your parking window</h3></div><span className="auto-tag"><ShieldCheck size={14}/> Timetable matched</span></div><label className="field-label">Parking date<input type="date" value={date} onChange={e=>{setDate(e.target.value);setWindowIndex(0);setNotice('')}}/></label><div className="window-options">{windows.map((w,i)=><button key={i} onClick={()=>setWindowIndex(i)} className={`window-option ${windowIndex===i?'selected':''}`}><Clock3 size={17}/><span><b>{w.start} – {w.end}</b><small>{w.label}</small></span>{windowIndex===i&&<CheckCircle2 size={18}/>}</button>)}</div>{!windows.length&&<div className="empty-inline">No suitable free windows found. Import or edit your timetable.</div>}<div className="policy-hint"><Clock3 size={16}/><span>Retrieve your vehicle by the booked end time. A 10-minute grace period follows.</span></div></div>
